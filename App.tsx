@@ -1,15 +1,13 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Stop, ProcessedArrival, TransitInsight } from './types';
+import { Stop, ProcessedArrival } from './types';
 import { fetchStopInfo, fetchRealtimeData } from './services/carrisService';
-import { getTransitBriefing } from './services/geminiService';
 import { DEFAULT_STOP_ID, RATP_BLUE, RATP_YELLOW } from './constants';
 
 const App: React.FC = () => {
   const [stopId, setStopId] = useState(DEFAULT_STOP_ID);
   const [stopInfo, setStopInfo] = useState<Stop | null>(null);
   const [arrivals, setArrivals] = useState<ProcessedArrival[]>([]);
-  const [insight, setInsight] = useState<TransitInsight | null>(null);
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
   const [searchInput, setSearchInput] = useState(DEFAULT_STOP_ID);
@@ -17,20 +15,12 @@ const App: React.FC = () => {
 
   const loadData = useCallback(async (id: string) => {
     setLoading(true);
-    // Reset insight on new load
-    setInsight(null);
     try {
       const info = await fetchStopInfo(id);
       setStopInfo(info);
       const realtime = await fetchRealtimeData(id);
       setArrivals(realtime);
       setLastUpdated(new Date());
-
-      // Fetch AI-powered briefing if there are arrivals
-      if (realtime.length > 0) {
-        const briefing = await getTransitBriefing(info.name, realtime);
-        setInsight(briefing);
-      }
     } catch (err) {
       console.error(err);
     } finally {
@@ -96,30 +86,6 @@ const App: React.FC = () => {
           </button>
         </form>
       </div>
-
-      {/* AI INSIGHT SECTION */}
-      {insight && (
-        <div className="bg-indigo-50 border-b border-indigo-100 p-4 transition-all animate-in fade-in slide-in-from-top-2 duration-500">
-          <div className="flex items-start gap-3">
-            <div className="bg-indigo-600 text-white rounded-lg p-1.5 mt-0.5 shadow-sm">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-              </svg>
-            </div>
-            <div>
-              <p className="text-[10px] text-indigo-900 font-extrabold leading-tight uppercase tracking-[0.1em] mb-1">
-                Breve Resumo AI
-              </p>
-              <p className="text-sm text-indigo-800 leading-snug font-medium">
-                {insight.summary}
-              </p>
-              <p className="text-xs text-indigo-600 mt-2 font-semibold flex items-center gap-1">
-                <span className="text-base leading-none">✨</span> {insight.recommendation}
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* ARRIVALS BOARD */}
       <main className="flex-1 overflow-y-auto bg-white">

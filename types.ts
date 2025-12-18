@@ -25,8 +25,3 @@ export interface ProcessedArrival {
   color: string;
 }
 
-// Added TransitInsight interface for AI-generated briefings
-export interface TransitInsight {
-  summary: string;
-  recommendation: string;
-}
