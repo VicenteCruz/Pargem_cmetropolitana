@@ -1,0 +1,1183 @@
+THIS IS ANOTHER APP, YOU CAN TAKE IT AS EXEMPLE:
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Geo Web 2024 Assignment</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        html, body {
+            height: 100%; /* Ensure the body takes full height */
+            margin: 0; /* Remove default margin */
+        }
+        #map { 
+            height: 100%; /* Make the map take full height */
+        }
+        #styleSelector {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background-color: white;
+            border: 1px solid #ccc;
+            padding: 10px;
+            z-index: 1000;
+        }
+        #refreshButton {
+            position: absolute; /* Position the button */
+            bottom: 20px; /* Distance from the bottom */
+            right: 20px; /* Distance from the right */
+            padding: 10px 15px; /* Button padding */
+            background-color: #007bff; /* Button color */
+            color: white; /* Text color */
+            border: none; /* Remove border */
+            border-radius: 5px; /* Rounded corners */
+            cursor: pointer; /* Pointer cursor on hover */
+            z-index: 1000; /* Ensure button is on top */
+        }
+        #lastRefresh {
+            position: absolute; /* Position the text */
+            bottom: 60px; /* Distance from the bottom */
+            right: 20px; /* Distance from the right */
+            color: black; /* Text color */
+            font-size: 14px; /* Font size */
+            z-index: 1000; /* Ensure text is on top */
+        }
+        #menuButton {
+            position: absolute; /* Position the button */
+            top: 20px; /* Distance from the top */
+            left: 20px; /* Distance from the left */
+            padding: 10px 15px; /* Button padding */
+            background-color: #007bff; /* Button color */
+            color: white; /* Text color */
+            border: none; /* Remove border */
+            border-radius: 5px; /* Rounded corners */
+            cursor: pointer; /* Pointer cursor on hover */
+            z-index: 1000; /* Ensure button is on top */
+        }
+        #sideMenu {
+            position: fixed; /* Fixed position to stay in place */
+            top: 0; /* Align to the top */
+            left: 0; /* Align to the left */
+            width: 250px; /* Set width of the sidebar */
+            height: 100%; /* Full height */
+            background-color: white; /* White background */
+            color: black; /* Black text color */
+            padding: 20px; /* Padding inside the sidebar */
+            box-shadow: 2px 0 5px rgba(0, 0, 0, 0.5); /* Shadow for depth */
+            transition: transform 0.3s ease; /* Smooth transition */
+            transform: translateX(-100%); /* Initially hidden */
+            z-index: 1000; /* Ensure it is on top */
+        }
+        
+        #sideMenu.show {
+            transform: translateX(0); /* Show the sidebar */
+        }
+        
+        #fullExtentButton {
+            position: absolute; /* Position the button */
+            bottom: 100px; /* Distance from the bottom */
+            right: 20px; /* Distance from the right */
+            padding: 10px 15px; /* Button padding */
+            background-color: #007bff; /* Button color */
+            color: white; /* Text color */
+            border: none; /* Remove border */
+            border-radius: 5px; /* Rounded corners */
+            cursor: pointer; /* Pointer cursor on hover */
+            z-index: 1000; /* Ensure button is on top */
+        }
+        
+        #resetButton {
+            position: absolute; /* Position the button */
+            bottom: 150px; /* Distance from the bottom */
+            right: 20px; /* Distance from the right */
+            padding: 10px 15px; /* Button padding */
+            background-color: #ec0000; /* Button color */
+            color: white; /* Text color */
+            border: none; /* Remove border */
+            border-radius: 5px; /* Rounded corners */
+            cursor: pointer; /* Pointer cursor on hover */
+            z-index: 1000; /* Ensure button is on top */
+            display: none; /* Initially hidden reset button */
+        }
+        
+        .bus-marker {
+            background-color: #ebeb00; /* Background color */
+            color: rgb(2, 1, 1); /* Text color */
+            border-radius: 10px; /* Rounded corners */
+            padding: 0px; /* Padding inside the rectangle */
+            text-align: center; /* Center the text */
+            width: 40px; /* Width of the rectangle */
+            font-size: 14px; /* Font size for the bus line number */
+            border: 4px solid #e2d300a9; /* Border color */
+        }
+        
+        .simple-point {
+            background-color: #ebeb00;
+            border: 1px solid #000000a9; /* Border color */
+            border-radius: 10%;
+            width: 10px;
+            height: 10px;
+        }
+        
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <div id="styleSelector">
+        <label for="mapStyles">Choose Map Style:</label>
+        <select id="mapStyles">
+            <option value="streets">Streets</option>
+            <option value="dark">Dark</option>
+            <option value="terrain">Terrain</option>
+            <option value="outdoor">Outdoor</option>
+            <option value="trafic">Trafic</option>
+            
+        </select>
+    </div>
+    <button id="refreshButton">Refresh</button>
+    <div id="lastRefresh">Last Refresh: Never</div>
+    <button id="menuButton">Open Menu</button>
+    <button id="fullExtentButton">Full Extent</button>
+    <button id="resetButton" style="display: none;">Reset Map</button>
+    <div id="sideMenu">
+        <h3 style="color: black;">Menu</h3>
+        <ul>
+            <li>
+                <label>
+                    <input type="checkbox" id="toggleBusPoints" checked>
+                    Show Bus Points
+                </label>
+            </li>
+            <li>
+                <label>
+                    <input type="checkbox" id="toggleAllBusStops" checked>
+                    Show All Bus Stops
+                </label>
+            </li>
+            <li>
+                <label for="districtSelect">Select District:</label>
+                <select id="districtSelect">
+                    <option value="0">-- Select District --</option>
+                    <option value="11">District 11</option>
+                    <option value="15">District 15</option>
+                </select>
+            </li>
+            <li>
+                <label for="busLineInput">Enter Bus Line:</label>
+                <input type="text" id="busLineInput" placeholder="Bus Line">
+                <button id="selectBusLineButton">Select Bus Line</button>
+                <button id="showAllBusesButton">Show All Buses</button>
+            </li>
+            <li>
+                <label for="municipalitySelect">Select Municipality:</label>
+                <select id="municipalitySelect">
+                    <option value="0">-- Select Municipality --</option>
+                    <option value="1101">Alenquer</option>
+                    <option value="1102">Arruda dos Vinhos</option>
+                    <option value="1105">Cascais</option>
+                    <option value="1106">Lisboa</option>
+                    <option value="1107">Loures</option>
+                    <option value="1109">Mafra</option>
+                    <option value="1110">Oeiras</option>
+                    <option value="1111">Sintra</option>
+                    <option value="1112">Sobral de Monte Agraço</option>
+                    <option value="1113">Torres Vedras</option>
+                    <option value="1114">Vila Franca de Xira</option>
+                    <option value="1115">Amadora</option>
+                    <option value="1116">Odivelas</option>
+                    <option value="1502">Alcochete</option>
+                    <option value="1503">Almada</option>
+                    <option value="1504">Barreiro</option>
+                    <option value="1506">Moita</option>
+                    <option value="1507">Montijo</option>
+                    <option value="1508">Palmela</option>
+                    <option value="1510">Seixal</option>
+                    <option value="1511">Sesimbra</option>
+                    <option value="1512">Setúbal</option>
+                    <option value="712">Vendas Novas</option>
+                </select>
+            </li>
+        </ul>
+    </div>
+    
+    <script>
+        var map = L.map('map', {
+            zoomControl: false // Disable default zoom control
+        }).setView([38.736946, -9.142685], 13); // Initialize the map with a view
+        
+        var currentLayer = L.tileLayer('https://api.mapbox.com/styles/v1/mapbox/streets-v11/tiles/{z}/{x}/{y}?access_token=pk.eyJ1IjoidmZjcnV6IiwiYSI6ImNtMzRuaDM5MjAxazIybHF0MnRkcGR5dDUifQ.ynftZ9Rp3L9yS1l2lhO5ZQ', {
+            maxZoom: 19,
+        }).addTo(map); // Add the default tile layer
+        
+        
+        var zoomControl = L.control.zoom({
+            position: 'bottomleft' // Set position to bottom left
+        }).addTo(map);
+        
+        var lastRefreshTime = 'Never'; // Initialize last refresh time
+        var currentLineShow = 0; //Var that define the visualizaton of bus line, if 0, then all buses appear
+        var vehicleMarkers = {}; // Object to hold vehicle markers by vehicle ID
+        var busStopMarkers = {}; // Change from array to object
+        var currentItineraryLayer = null; // Variable to hold the current itinerary layer
+        
+        function updateLastRefresh() {
+            lastRefreshTime = new Date().toLocaleTimeString(); // Update to current time
+            document.getElementById('lastRefresh').innerText = 'Last Refresh: ' + lastRefreshTime; // Update text
+        }
+        
+        function loadBusPositions() {
+            fetch('https://api.cmet.pt/vehicles')
+            .then(response => response.json())
+            .then(data => {
+                
+                const newMarkers = {}; // Temporary object to hold new markers
+                
+                if (Array.isArray(data) && data.length > 0) { // Check if data is valid
+                    data.forEach(vehicle => {
+                        if (vehicle.lat && vehicle.lon) { // Check for coordinates
+                            const vehicleId = vehicle.id; // Assuming vehicle.id is unique
+                            
+                            // Check if the marker already exists
+                            if (vehicleId in vehicleMarkers) {
+                                // Update the existing marker's position if it has changed
+                                const existingMarker = vehicleMarkers[vehicleId];
+                                const newLatLng = L.latLng(vehicle.lat, vehicle.lon);
+                                if (existingMarker.getLatLng().lat !== vehicle.lat || existingMarker.getLatLng().lng !== vehicle.lon) {
+                                    existingMarker.setLatLng(newLatLng); // Update position
+                                }
+
+                            } else if(currentLineShow === 0 || currentLineShow === vehicle.line_id) {
+                                // If it's a new marker, fetch the pattern info first
+                                
+                                // Create a custom marker with a rectangle and rounded borders
+                                const busMarker = L.divIcon({
+                                    className: 'bus-marker', // Use the CSS class for styling
+                                    html: `<div>${vehicle.line_id}</div>`, // HTML for the marker
+                                    iconSize: [40, 20], // Size of the icon
+                                    iconAnchor: [20, 10], // Point of the icon which will correspond to marker's location
+                                });
+                                const newMarker = L.marker([vehicle.lat, vehicle.lon], { 
+                                    icon: busMarker,
+                                }).addTo(map); // Use custom icon
+                                newMarkers[vehicleId] = newMarker; // Store the new marker
+                                
+                                // Create a popup with vehicle information
+                                newMarker.options.id = vehicle.id || 'N/A'; // Save the vehicle id into the marker
+                                newMarker.options.line = vehicle.line_id || 'N/A'; // Save the vehicle line into the marker
+                                newMarker.options.latitude = vehicle.lat || 'N/A'; // Save the vehicle latitude into the marker
+                                newMarker.options.longitude = vehicle.lon || 'N/A'; // Save the vehicle longitude into the marker
+                                newMarker.options.speed = vehicle.speed || 'N/A'; // Save the vehicle speed into the marker
+                                newMarker.options.status = vehicle.current_status || 'N/A'; // Save the vehicle status into the marker
+                                newMarker.options.stopId = vehicle.stop_id ? `<a href="javascript:void(0);" onclick="selectBusStopById(${vehicle.stop_id - 0})">${vehicle.stop_id - 0}</a>` : 'N/A'; // Save the vehicle stop id into the marker
+                                
+                                var popupContent = `
+                                    <strong>Id:</strong> ${newMarker.options.id}<br>
+                                    <strong>Line:</strong> ${newMarker.options.line}<br>
+                                    <strong>Latitude:</strong> ${newMarker.options.latitude}<br>
+                                    <strong>Longitude:</strong> ${newMarker.options.longitude}<br>
+                                    <strong>Speed:</strong> ${newMarker.options.speed}<br>
+                                    <strong>Status:</strong> ${newMarker.options.status}<br>
+                                    <strong>Stop id:</strong> ${newMarker.options.stopId}<br>
+                                `;
+                                //console.log(patternData);
+                                newMarker.bindPopup(popupContent); // Bind the popup to the new marker
+                                
+                                // Add click event to open the popup
+                                newMarker.on('click', function() {
+                                    this.openPopup(); // Open the popup on click
+                                    selectBusLineId(vehicle.line_id);
+                                    showItinerary(vehicle.pattern_id);
+                                    setTimeout(() => {
+                                        fullExtent();
+                                    }, 300);
+                                    setTimeout(() => {
+                                        fullExtent();
+                                    }, 1000);
+                                });
+
+
+                            }
+                        }
+                    });
+                }
+                
+                // Update the markers object with new markers
+                vehicleMarkers = { ...vehicleMarkers, ...newMarkers }; // Merge new markers into the existing markers object
+                updateLastRefresh(); // Update last refresh time after loading data
+                
+                const showBusPoints = document.getElementById('toggleBusPoints').checked;
+                if (!showBusPoints) {
+                    Object.values(newMarkers).forEach(marker => {
+                        map.removeLayer(marker); // Remove marker from the map if checkbox is unchecked
+                    });
+                }
+            })
+            .catch(error => console.error('API Error:', error));
+        }
+        
+        function loadBusStops() {
+            fetch('https://api.cmet.pt/stops')
+            .then(response => response.json())
+            .then(data => {
+                // Clear existing bus stop markers from the map
+                Object.values(busStopMarkers).forEach(marker => map.removeLayer(marker));
+                busStopMarkers = {}; // Clear the busStopMarkers object
+
+                data.forEach(stop => {
+                    const stopId = stop.id;
+                    const lat = stop.lat;
+                    const lon = stop.lon;
+                    const district = stop.district_id;
+                    const municipality = stop.municipality_id;
+                    const patterns = stop.pattern_ids;
+
+
+                    // Create a new circle marker for bus stops
+                    const newMarker = L.circleMarker([lat, lon], {
+                        radius: 5,
+                        fillColor: 'red',
+                        color: 'red', 
+                        weight: 1,
+                        opacity: 1,
+                        fillOpacity: 1
+                    });
+
+                    // Set the properties on the marker
+                    newMarker.district = district;
+                    newMarker.municipality = municipality;
+                    newMarker.stopId = stopId;
+                    newMarker.patterns = patterns;
+
+
+                    // Add the marker to the map
+                    newMarker.addTo(map);
+                    busStopMarkers[stopId] = newMarker;
+
+                    // Create a popup with bus stop information
+                    var popupContent = `
+                        <strong>Stop Name:</strong> ${stop.long_name || 'N/A'}<br>
+                        <strong>District:</strong> ${district || 'N/A'}<br>
+                        <strong>Municipality:</strong> ${municipality || 'N/A'}<br>
+                        <strong>Lines:</strong> ${stop.line_ids ? stop.line_ids.join(', ') : 'N/A'}<br>
+                        <strong>Status:</strong> ${stop.operational_status || 'N/A'}<br>
+                        <strong>Wheelchair Access:</strong> ${stop.wheelchair_boarding ? 'Yes' : 'No'}
+                    `;
+                    newMarker.bindPopup(popupContent);
+                });
+            })
+            .catch(error => console.error('API Error:', error));
+        }
+        function changeMapStyle(style) {
+            // Remove the current layer
+            map.removeLayer(currentLayer);
+            
+            // Set the new tile layer based on the selected style
+            switch (style) {
+                case 'dark':
+                currentLayer = L.tileLayer('https://api.mapbox.com/styles/v1/vfcruz/cm34p81mt00ac01o05joohvdv/tiles/{z}/{x}/{y}?access_token=pk.eyJ1IjoidmZjcnV6IiwiYSI6ImNtMzRuaDM5MjAxazIybHF0MnRkcGR5dDUifQ.ynftZ9Rp3L9yS1l2lhO5ZQ', {
+                    maxZoom: 19,
+                });
+                break;
+                case 'terrain':
+                currentLayer = L.tileLayer('https://api.mapbox.com/styles/v1/vfcruz/cm34p32b900mx01qz7gvs5lne/tiles/{z}/{x}/{y}?access_token=pk.eyJ1IjoidmZjcnV6IiwiYSI6ImNtMzRuaDM5MjAxazIybHF0MnRkcGR5dDUifQ.ynftZ9Rp3L9yS1l2lhO5ZQ', {
+                    maxZoom: 20,
+                });
+                break;
+                case 'outdoor':
+                currentLayer = L.tileLayer('https://api.mapbox.com/styles/v1/vfcruz/cm34oxww300aa01o0cfn83m5h/tiles/{z}/{x}/{y}?access_token=pk.eyJ1IjoidmZjcnV6IiwiYSI6ImNtMzRuaDM5MjAxazIybHF0MnRkcGR5dDUifQ.ynftZ9Rp3L9yS1l2lhO5ZQ', {
+                    maxZoom: 20,
+                });
+                break;
+                case 'trafic':
+                currentLayer = L.tileLayer('https://api.mapbox.com/styles/v1/mapbox/navigation-day-v1/tiles/{z}/{x}/{y}?access_token=pk.eyJ1IjoidmZjcnV6IiwiYSI6ImNtMzRuaDM5MjAxazIybHF0MnRkcGR5dDUifQ.ynftZ9Rp3L9yS1l2lhO5ZQ', {
+                    maxZoom: 20,
+                });
+                break;
+                case 'streets':
+                currentLayer = L.tileLayer('https://api.mapbox.com/styles/v1/mapbox/streets-v11/tiles/{z}/{x}/{y}?access_token=pk.eyJ1IjoidmZjcnV6IiwiYSI6ImNtMzRuaDM5MjAxazIybHF0MnRkcGR5dDUifQ.ynftZ9Rp3L9yS1l2lhO5ZQ', {
+                    maxZoom: 20,
+                });
+                break;
+                /*BACKUP
+                case 'streets':
+                default:
+                currentLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                });
+                break;
+                */
+            }
+            currentLayer.addTo(map);
+        }
+        
+        // Call loadBusStops to fetch and display bus stops
+        loadBusStops(); 
+        
+        
+        document.getElementById('refreshButton').addEventListener('click', loadBusPositions); // Add click event to button
+        
+        setInterval(loadBusPositions, 10000); // Fetch every 10 seconds
+        
+        loadBusPositions(); 
+        
+        document.getElementById('menuButton').addEventListener('click', () => {
+            const sideMenu = document.getElementById('sideMenu');
+            sideMenu.classList.toggle('show'); // Toggle the 'show' class
+        });
+        
+        document.getElementById('map').addEventListener('click', () => {
+            const sideMenu = document.getElementById('sideMenu');
+            sideMenu.classList.remove('show'); // Remove the 'show' class
+        });
+        
+        document.getElementById('toggleBusPoints').addEventListener('change', (event) => {
+            if (event.target.checked) {
+                // Show bus points
+                Object.values(vehicleMarkers).forEach(marker => {
+                    marker.addTo(map); // Add marker to the map
+                });
+            } else {
+                // Hide bus points
+                Object.values(vehicleMarkers).forEach(marker => {
+                    map.removeLayer(marker); // Remove marker from the map
+                });
+            }
+
+
+        });
+        
+        document.getElementById('districtSelect').addEventListener('change', () => {
+            const selectedDistrict = document.getElementById('districtSelect').value; // Parse selected district as an integer
+            
+            // Show or hide markers based on the selected district
+            Object.values(busStopMarkers).forEach(marker => {
+                console.log("ola");
+                const matchesDistrict = selectedDistrict === 0 || marker.district === selectedDistrict; // Check district match
+                
+                if (matchesDistrict) {
+                    if (!map.hasLayer(marker)) {
+                        marker.addTo(map); // Show marker if it matches
+                    }
+                } else {
+                    if (map.hasLayer(marker)) {
+                        map.removeLayer(marker); // Remove marker if it doesn't match
+                    }
+                }
+            });
+        });
+        
+        document.getElementById('municipalitySelect').addEventListener('change', () => {
+            const selectedMunicipality = document.getElementById('municipalitySelect').value; // Parse selected district as an integer
+            
+            // Show or hide markers based on the selected Municipality
+            Object.values(busStopMarkers).forEach(marker => {
+                const matchesMunicipality = selectedMunicipality === 0 || marker.municipality === selectedMunicipality; // Check district match
+                
+                if (matchesMunicipality) {
+                    if (!map.hasLayer(marker)) {
+                        marker.addTo(map); // Show marker if it matches
+                    }
+                } else {
+                    if (map.hasLayer(marker)) {
+                        map.removeLayer(marker); // Remove marker if it doesn't match
+                    }
+                }
+            });
+        });
+        
+        document.getElementById('fullExtentButton').addEventListener('click', () => {
+            fullExtent();
+        });
+
+        function fullExtent(){
+            const visibleMarkers = []; // Array to hold currently visible markers
+            
+            // Check bus stop markers
+            Object.values(busStopMarkers).forEach(marker => {
+                if (map.hasLayer(marker)) {
+                    visibleMarkers.push(marker); // Add to visible markers if currently displayed
+                }
+            });
+            
+            // Check vehicle markers
+            Object.values(vehicleMarkers).forEach(marker => {
+                if (map.hasLayer(marker)) {
+                    visibleMarkers.push(marker); // Add to visible markers if currently displayed
+                }
+            });
+            
+            // Adjust the map view to fit the bounds of the visible markers
+            if (visibleMarkers.length > 0) {
+                const group = new L.featureGroup(visibleMarkers); // Create a feature group from visible markers
+                map.fitBounds(group.getBounds()); // Adjust the map view to fit the bounds of the visible markers
+            } else {
+                alert("No visible points to focus on."); // Alert if no markers are visible
+            }
+        }
+        
+        function selectBusLineId(lineId) {
+            Object.values(vehicleMarkers).forEach(marker => {
+                if(marker.options.line === lineId) {
+                    marker.addTo(map);
+                } else {
+                    map.removeLayer(marker);
+                }
+            });
+        }
+        
+        function selectBusStopId(stopIds) {
+            // Convert stopIds array to integers
+            const intStopIds = stopIds.map(id => parseInt(id));
+            
+            Object.values(busStopMarkers).forEach(marker => {
+                const intMarkerId = parseInt(marker.stopId);
+                
+                if(intStopIds && intStopIds.includes(intMarkerId)) {
+                    marker.addTo(map);
+                } else {
+                    map.removeLayer(marker);
+                }
+            });
+
+        }
+        
+        function showItinerary(pattern) {
+            fetch(`https://api.cmet.pt/patterns/${pattern}`)
+            .then(response => response.json())
+            .then(data => {
+                const stopIds = data[0].path.map(p => p.stop_id);
+
+                const shape_id = data[0].shape_id;
+                fetch(`https://api.cmet.pt/shapes/${shape_id}`)
+                .then(response => response.json())
+                .then(data => {
+                    const geojson = data.geojson;
+                    
+                    if (currentItineraryLayer) {
+                        map.removeLayer(currentItineraryLayer);
+                    }
+                    
+                    currentItineraryLayer = L.geoJSON(geojson, {
+                        style: {
+                            color: '#ff0000',
+                            weight: 2,
+                            opacity: 1
+                        }
+                    }).addTo(map);
+                
+                // Calculate color for each stop based on its position in the sequence
+                stopIds.forEach((stopId, index) => {
+                    const marker = busStopMarkers[stopId];
+                    if (marker) {
+                        // Calculate color interpolation (dark red to light red)
+                        const progress = index / (stopIds.length - 1); // 0 to 1
+                        const r = Math.round(255 * (1-progress)); // 139 to 255
+                        const g = Math.round(255 *  progress);     // 0 to 99
+                        const b = Math.round(0 );     // 0 to 71
+                        
+                        marker.setStyle({
+                            fillColor: `rgb(${r},${g},${b})`,
+                            color: `rgb(${r},${g},${b})`,
+                            radius: 5,
+                            weight: 1,
+                            opacity: 1,
+                            fillOpacity: 1
+                        });
+                        marker.addTo(map);
+                    }
+                });
+
+                // Hide bus stops that aren't part of the itinerary
+                Object.values(busStopMarkers).forEach(marker => {
+                    if (!stopIds.includes(marker.stopId)) {
+                        map.removeLayer(marker);
+                    }
+                });
+                    
+                    document.getElementById('resetButton').style.display = 'block';
+                });
+            });
+        }
+        
+        function resetMap() {
+            // Remove the itinerary layer
+            if (currentItineraryLayer) {
+                map.removeLayer(currentItineraryLayer);
+                currentItineraryLayer = null;
+            }
+            
+            // Hide the reset button
+            document.getElementById('resetButton').style.display = 'none';
+            
+            // Reset the map view based on checkboxes
+            const showBusPoints = document.getElementById('toggleBusPoints').checked;
+            const showAllBusStops = document.getElementById('toggleAllBusStops').checked;
+            
+            Object.values(vehicleMarkers).forEach(marker => {
+                if (showBusPoints) {
+                    marker.addTo(map);
+                } else {
+                    map.removeLayer(marker);
+                }
+            });
+            
+            Object.values(busStopMarkers).forEach(marker => {
+                marker.setStyle({
+                    radius: 5,
+                        fillColor: 'red',
+                        color: 'red', 
+                        weight: 1,
+                        opacity: 1,
+                        fillOpacity: 1
+                        });
+                if (showAllBusStops) {
+                    marker.addTo(map);
+                } else {
+                    map.removeLayer(marker);
+                }
+            });
+        }
+        
+        document.getElementById('resetButton').addEventListener('click', resetMap); // Attach reset function to button
+        
+        document.getElementById('selectBusLineButton').addEventListener('click', () => {
+            const lineId = document.getElementById('busLineInput').value; // Get the input value
+            currentLineShow = lineId;
+            selectBusLineId(lineId); // Call the function to select the bus stop
+        });
+        
+        document.getElementById('showAllBusesButton').addEventListener('click', () => {
+            currentLineShow = 0;
+            loadBusPositions();
+            Object.values(vehicleMarkers).forEach(marker => {
+                map.addLayer(marker);
+            })});
+            
+            // Event listener for the dropdown menu
+            document.getElementById('mapStyles').addEventListener('change', function() {
+                changeMapStyle(this.value);
+            });
+            
+            document.getElementById('toggleAllBusStops').addEventListener('change', (event) => {
+                if (event.target.checked) {
+                    // Show all bus stops
+                    Object.values(busStopMarkers).forEach(marker => {
+                        if (!map.hasLayer(marker)) {
+                            marker.addTo(map); // Add marker to the map if not already added
+                        }
+                    });
+                } else {
+                    // Hide all bus stops
+                    Object.values(busStopMarkers).forEach(marker => {
+                        if (map.hasLayer(marker)) {
+                            map.removeLayer(marker); // Remove marker from the map if it is currently added
+                        }
+                    });
+                }
+            });
+            
+            // Function to calculate distance between two points in meters
+            function calculateDistance(lat1, lon1, lat2, lon2) {
+                const R = 6371000; // Radius of the Earth in meters
+                const dLat = (lat2 - lat1) * Math.PI / 180;
+                const dLon = (lon2 - lon1) * Math.PI / 180;
+                const a = 
+                Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                Math.sin(dLon / 2) * Math.sin(dLon / 2);
+                const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+                return R * c; // Distance in meters
+            }
+            
+            map.on('click', (event) => {
+                const clickLatLng = event.latlng; // Get the latitude and longitude of the click
+                
+                resetMap();
+                
+                document.getElementById('resetButton').style.display = 'block';
+                
+                // Hide all bus stop markers initially
+                Object.values(busStopMarkers).forEach(marker => {
+                    map.removeLayer(marker);
+                });
+                
+                // Show only bus stops within 200 meters of the clicked point
+                Object.values(busStopMarkers).forEach(marker => {
+                    const distance = calculateDistance(clickLatLng.lat, clickLatLng.lng, marker.getLatLng().lat, marker.getLatLng().lng);
+                    if (distance <= 1000) {
+                        marker.addTo(map); // Show marker if within 200 meters
+                    }
+                });
+            });
+            
+            function updateMarkers() {
+                const zoomLevel = map.getZoom(); // Get the current zoom level
+                
+                Object.values(vehicleMarkers).forEach(marker => {
+                    if (zoomLevel >= 13) { // Define the zoom level threshold
+                        // Use the .bus-marker styled icon
+                        const busMarker = L.divIcon({
+                            className: 'bus-marker',
+                            html: `<div>${marker.options.line}</div>`,
+                            iconSize: [40, 20],
+                            iconAnchor: [20, 10],
+                        });
+                        marker.setIcon(busMarker);
+                    } else {
+                        // Use a simple div icon to represent a point
+                        const pointMarker = L.divIcon({
+                            className: 'simple-point',
+                            html: '',
+                            iconSize: [zoomLevel -5, zoomLevel-5],
+                            iconAnchor: [5, 5],
+                        });
+                        marker.setIcon(pointMarker);
+                    }
+                });
+                
+                
+            }
+            
+            map.on('zoomend', updateMarkers); // Add event listener for zoom changes
+            
+            // Call updateBusMarkers initially to set the correct icon based on the initial zoom level
+            updateMarkers();
+            
+            let isSelectingPoints = false;
+            let selectedPoints = [];
+            let firstClickMarkers = [];
+            let secondClickMarkers = [];
+            let patternInCommun = [];
+
+            // Listen for the 'keydown' event to detect when the 'f' key is pressed
+            document.addEventListener('keydown', (event) => {
+                if (event.key === 'f') {
+                    isSelectingPoints = true;
+                    selectedPoints = []; // Reset the selected points
+                    firstClickMarkers = []; // Reset first click markers
+                    secondClickMarkers = []; // Reset second click markers
+                    patternInCommun = [];
+                    alert('Press on the map to select two points.');
+                }
+            });
+
+            // Listen for map clicks
+            map.on('click', (event) => {
+                if (isSelectingPoints && selectedPoints.length < 2) {
+                    selectedPoints.push(event.latlng); // Store the clicked point's coordinates
+
+                    Object.values(busStopMarkers).forEach(marker => {
+                        const distance = calculateDistance(event.latlng.lat, event.latlng.lng, marker.getLatLng().lat, marker.getLatLng().lng);
+                        if (distance <= 500) {
+                            // Instead of adding to the map, save the marker to a separate vector
+                            if (selectedPoints.length === 1) {
+                                firstClickMarkers.push(marker);                    
+                            } else if (selectedPoints.length === 2) {
+                                secondClickMarkers.push(marker);
+                            }
+                        }
+                    });
+
+
+                    if (selectedPoints.length === 2) {
+                        isSelectingPoints = false; // Stop selecting after two points
+                        firstClickMarkers.forEach(firstStops => {
+                            secondClickMarkers.forEach(secondStops => {
+                                // Convert patterns to arrays for comparison
+                                const firstPatternsArray = Array.isArray(firstStops.patterns) ? firstStops.patterns : [firstStops.patterns];
+                                const secondPatternsArray = Array.isArray(secondStops.patterns) ? secondStops.patterns : [secondStops.patterns];
+                                // Find common patterns
+                                const commonPatterns = firstPatternsArray.filter(pattern => secondPatternsArray.includes(pattern));
+                                if (commonPatterns.length > 0) {
+                                    patternInCommun.push(...commonPatterns);
+                                }
+                            });
+                        });
+                        if(patternInCommun.length > 0){
+                            const formattedPattern = patternInCommun[0].toString().replace(/(\d{4})(\d{1})(\d{1})/, "$1_$2_$3");
+                            const formattedLine = patternInCommun[0].toString().substring(0, 4);
+
+                            console.log(formattedLine);
+                            showItinerary(formattedPattern);
+                            selectBusLineId(formattedLine);
+                        }
+                    }
+                }
+            });
+            
+        </script>
+    </body>
+    </html>
+
+THIS IS THE API:
+GTFS
+GET /gtfs
+Returns the zip plan for the currently live GTFS feed.
+
+Alerts
+GET /alerts
+GET /alerts.pb
+Returns the service alerts in JSON and Protobuf format, following the GTFS-RT Service Alerts standard. Please refer to the documentation available here.
+
+Vehicles
+GET /vehicles
+Returns information for all vehicles in service for Carris Metropolitana. Timestamp for the last known position is in milliseconds, with seconds precision, and is adjusted for Lisbon time (GMT+01 WEST). Each vehicle has speed and heading, and has information for the current serviced trip and pattern.
+
+Example Response:
+
+[
+    {
+        id: "41|1153",
+        lat: 38.740165,
+        lon: -9.268897,
+        speed: 0,
+        heading: 68.0999984741211,
+        trip_id: "1724_0_2_2030_2059_0_7",
+        pattern_id: "1724_0_2"
+        timestamp: 1693948520000,
+    },
+    ...
+]
+GET /vehicles.pb
+Returns the vehicle locations in Protobuf format, following the GTFS-RT Vehicle Locations standard. Please refer to the documentation available here.
+
+Municipalities
+GET /municipalities
+GET /municipalities/:id
+Returns information for municipalities in the Lisbon metropolitan area, as well as adjacent municipalities where Carris Metropolitana also has service.
+
+Example Response:
+
+[
+    {
+        id: "1502",
+        name: "Alcochete",
+        prefix: "01",
+        district_id: "15",
+        district_name: "Setúbal",
+        region_id: "PT170",
+        region_name: "AML",
+    },
+    ...
+]
+Stops
+GET /stops
+GET /stops/:id
+Returns static information for all stops, as well as associated lines, routes and patterns that use each stop.
+
+Example Response:
+
+[
+    {
+
+        id: "010001",
+        name: "R Carlos M. R. Francisco 229 (Escola Monte Novo)",
+        short_name: null,
+        tts_name: "Rua Carlos Manuel Rodrigues Francisco 229 Escola Monte Novo",
+
+        lat: 38.754244,
+        lon: -8.959557,
+
+        locality: "Alcochete",
+        parish_id: null,
+        parish_name: null,
+        municipality_id: "1502",
+        municipality_name: "Alcochete",
+        district_id: "15",
+        district_name: "Setúbal",
+        region_id: "PT170",
+        region_name: "AML",
+
+        wheelchair_boarding: null,
+
+        facilities: [],
+
+        lines: ["4001", "4002"],
+        routes: ["4001_0", "4002_0"],
+        patterns: ["4001_0_3", "4002_0_3"],
+
+    },
+    ...
+]
+GET /stops/:id/realtime
+Returns realtime arrival estimations for a single stop.
+
+Example Response:
+
+[
+    {
+        line_id: "2909",
+        pattern_id: "2909_0_1",
+        trip_id: "2909_0_1|130|2|0824",
+        headsign: "Freiria (E.B. 2-3)",
+        scheduled_arrival: "08:56:00",
+        estimated_arrival: "08:57:00",
+        observed_arrival: "08:58:00",
+        vehicle_id: "42|2345"
+    },
+    ...
+]
+Lines
+GET /lines
+GET /lines/:id
+Returns information for lines. Each line can have several routes and patterns, and serves a set of municipalities and localities.
+
+Example Response:
+
+[
+    {
+
+        id: "1001",
+        short_name: "1001",
+        long_name: "Alfragide (Estr Seminario) - Reboleira (Estação)",
+        color: "#ED1944",
+        text_color: "#FFFFFF",
+
+        municipalities: ["1115"],
+        localities: ["Alfragide", "Amadora", "Reboleira", "Buraca"],
+
+        routes: ["1001_0"],
+        patterns: ["1001_0_1", "1001_0_2"],
+
+        facilities: [],
+
+    },
+    ...
+]
+Routes
+GET /routes
+GET /routes/:id
+Returns information for routes. Each route can have at most two patterns, and serves a set of municipalities and localities.
+
+Example Response:
+
+[
+    {
+
+        id: "1001_0",
+        short_name: "1001",
+        long_name: "Alfragide (Estr Seminario) - Reboleira (Estação)",
+        color: "#ED1944",
+        text_color: "#FFFFFF",
+
+        line_id: "1001",
+
+        patterns: ["1001_0_1", "1001_0_2"],
+
+        municipalities: ["1115"],
+        localities: ["Alfragide", "Amadora", "Reboleira", "Buraca"],
+        facilities: [],
+
+    },
+    ...
+]
+Patterns
+GET /patterns/:id
+Returns information for a single pattern. Due to the size of each object, it is not possible to return all patterns at once. User interfaces should present a list of lines, and request each associated patterns when the user selects a line. It is the pattern that represents the set of equal journeys of a line. Each pattern has a set of dates when it is valid, a path with the sequence of stops, a set of trips with the arrival time to each stop, and an associated shape id.
+
+Example Response:
+
+{
+
+    id: "2708_0_1",
+    short_name: "2708",
+    headsign: "Estação Oriente",
+    direction: 0,
+    color: "#ED1944",
+    text_color: "#FFFFFF",
+
+    line_id: "2708",
+    route_id: "2708_0",
+
+    valid_on: ["20230103", "20230104", "20230105", ...],
+
+    municipalities: ["1107", "1106"],
+    localities: ["Loures", "Moscavide", "Parque das Nações"],
+    facilities: [],
+
+    shape_id: "p1_2708_0_1",
+
+    path: [
+        {
+            stop: {
+                id: "010001",
+                name: "R Carlos M. R. Francisco 229 (Escola Monte Novo)",
+                short_name: null,
+                tts_name: "Rua Carlos Manuel Rodrigues Francisco 229 Escola Monte Novo",
+                lat: 38.754244,
+                lon: -8.959557,
+                locality: "Alcochete",
+                parish_id: null,
+                parish_name: null,
+                municipality_id: "1502",
+                municipality_name: "Alcochete",
+                district_id: "15",
+                district_name: "Setúbal",
+                region_id: "PT170",
+                region_name: "AML",
+                wheelchair_boarding: null,
+                facilities: [],
+                lines: ["4001", "4002"],
+                routes: ["4001_0", "4002_0"],
+                patterns: ["4001_0_3", "4002_0_3"],
+
+            },
+            allow_pickup: true,
+            allow_drop_off: true,
+            distance_delta: 0,
+            stop_sequence: 1
+        },
+        ...
+    ],
+
+    trips: [
+        {
+            trip_id: "p1_2708_0_1|1|1|0450",
+            calendar_id: "p1_11",
+            dates: ["20230103", "20230104", "20230105", ...],
+            schedule: [
+                {
+                    stop_id: "071339",
+                    arrival_time: "04:50:00",
+                    arrival_time_operation: "04:50:00",
+                    travel_time: "0",
+                },
+                ...
+            ],
+        },
+        ...
+    ],
+
+}
+Shapes
+GET /shapes/:id
+Returns a single shape in GTFS and Geojson format. Extension is in meters.
+
+Example Response:
+
+{
+
+    id: "p2_3701_0_1",
+    extension: 12745,
+
+    points: [
+        {
+            shape_pt_lat: "38.66786",
+            shape_pt_lon: "-9.164045",
+            shape_pt_sequence: "1",
+            shape_dist_traveled: "0",
+        },
+        {
+            shape_pt_lat: "38.66772",
+            shape_pt_lon: "-9.16377",
+            shape_pt_sequence: "2",
+            shape_dist_traveled: "0.0284",
+        },
+        ...
+    ],
+
+    geojson: {
+        type: "Feature",
+        geometry: {
+            type: "LineString",
+            coordinates: [
+                [-9.164045, 38.66786],
+                [-9.16377, 38.66772],
+                [-9.16412, 38.6678],
+                ...
+            ]
+        }
+    }
+
+}
+ENCM
+GET /datasets/facilities/encm
+GET /datasets/facilities/encm/:id
+Known as Espaços navegante® Carris Metropolitana, these endpoints return information for all or each location, including live estimated wait times.
+
+Example Response:
+
+[
+    {
+
+        id: "8400000000000001",
+        name: "Espaço navegante® Carris Metropolitana Queluz",
+
+        lat: 38.756317,
+        lon: -9.253332,
+
+        phone: "210410400",
+        email: null,
+        url: null,
+
+        address: "Avenida José Elias Garcia 71",
+        postal_code: "2745-155",
+        locality: "Queluz",
+        parish_id: null,
+        parish_name: null,
+        municipality_id: "1512",
+        municipality_name: "Setúbal",
+        district_id: "15",
+        district_name: "Setúbal",
+        region_id: "PT170",
+        region_name: "AML",
+
+        hours_monday: ["08:00-19:00"],
+        hours_tuesday: ["08:00-19:00"],
+        hours_wednesday": ["08:00-19:00"],
+        hours_thursday: ["08:00-19:00"],
+        hours_friday: ["08:00-19:00"],
+        hours_saturday: [],
+        hours_sunday": [],
+        hours_special: null,
+
+        currently_waiting: 0,
+        expected_wait_time: 0,
+
+        stops: [],
+
+    },
+    ...
+]
+Schools
+GET /datasets/facilities/schools
+GET /datasets/facilities/schools/:id
+Returns a list of schools in the Lisbon metropolitan area. Learn more about this dataset here.
+
+Example Response:
+
+[
+    {
+
+        id: "200098",
+        name: "Escola Básica de A-das-Lebres",
+
+        lat: 38.852917,
+        lon: -9.167282,
+
+        nature: "public",
+        grouping: "Agrupamento de Escolas João Villaret Loures",
+        cicles: ["pre_school", "basic_1"],
+
+        address: "R. da Liberdade 98",
+        postal_code: "2660-001",
+        locality: "FRIELAS",
+        parish_id: null,
+        parish_name: null,
+        municipality_id: "1107",
+        municipality_name: "Loures",
+        district_id: "11",
+        district_name: "Lisboa",
+        region_id: "PT170",
+        region_name: "AML",
+
+        url: null,
+        email: "eb1.adaslebres@escolas.min-edu.pt",
+        phone: "219832364",
+
+        stops: ["070401", "070403", "070404", ...],
+
+    },
+    ...
+]

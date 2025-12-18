@@ -25,3 +25,15 @@ export interface ProcessedArrival {
   color: string;
 }
 
+export interface Vehicle {
+  id: string;
+  lat: number;
+  lon: number;
+  speed?: number;
+  heading?: number;
+  line_id: string;
+  trip_id: string;
+  pattern_id: string;
+  timestamp: number;
+}
+

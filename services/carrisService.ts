@@ -1,5 +1,5 @@
 
-import { Stop, RealtimeArrival, ProcessedArrival } from '../types';
+import { Stop, RealtimeArrival, ProcessedArrival, Vehicle } from '../types';
 import { getLineColor } from '../constants';
 
 const BASE_URL = 'https://api.carrismetropolitana.pt';
@@ -56,4 +56,17 @@ export const searchStops = async (query: string): Promise<Stop[]> => {
     } catch {
         return [];
     }
+};
+
+export const fetchVehicles = async (lineId?: string): Promise<Vehicle[]> => {
+  const response = await fetch(`${BASE_URL}/vehicles`);
+  if (!response.ok) throw new Error('Failed to fetch vehicles');
+  const data: Vehicle[] = await response.json();
+  
+  // Filter by line_id if provided
+  if (lineId) {
+    return data.filter(vehicle => vehicle.line_id === lineId);
+  }
+  
+  return data;
 };
