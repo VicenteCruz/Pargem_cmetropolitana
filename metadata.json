@@ -1,0 +1,5 @@
+{
+  "name": "Copy of SIEL RATP-Style Transit Board",
+  "description": "A high-fidelity real-time transit dashboard inspired by Paris RATP SIEL displays, using Carris Metropolitana live data.",
+  "requestFramePermissions": []
+}
